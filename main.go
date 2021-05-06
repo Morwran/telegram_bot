@@ -15,6 +15,8 @@ import (
   "bufio"
   "time"
   "sync"
+  "sphere_telegram_bot/Include"
+  "encoding/hex"
 )
 
 type SeenPerson struct{
@@ -30,11 +32,12 @@ type RetUrl struct{
 
 type ConnConf struct{
 	Token string `json:"Token"`
-	PSWD string `json:"PSWD"`
+	PSWD string  `json:"PSWD"`
 }
 
+
 const (
-	
+
 	helpMsg = 	"Choose one of the following commands:\n"+
 				"/all - to display all news\n" +
 				"/vk - to display news from vk.com\n" +
@@ -50,6 +53,8 @@ const (
 	NewsPath = "newsid.txt"
 
 	ConfPath = "conf.json"
+
+	key = "4w8TLujJ72ssItNIH92kKeR3pPGVzIuu"
 
 
 )
@@ -67,6 +72,24 @@ var retLinks = map[string]string{
 }
 
 func SavePerson(data SeenPerson, FilePath string) {
+    
+	jsonData, _ := json.MarshalIndent(data, "", " ")
+ 
+	//_ = ioutil.WriteFile("test.json", file, 0644)
+
+	f, err := os.OpenFile(FilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+	    log.Fatal(err)
+	}
+	
+	defer f.Close()
+	
+	if _, err = f.Write(jsonData); err != nil {
+	    log.Fatal(err)
+	}
+}
+
+func SaveConf(data ConnConf, FilePath string) {
     
 	jsonData, _ := json.MarshalIndent(data, "", " ")
  
@@ -144,15 +167,37 @@ func ReadPerson(FilePath string)(map[int64]bool, []SeenPerson) {
 }
 
 
+func decodeSecret(data string) string {
+	src := []byte(data)
+
+    dst := make([]byte, hex.DecodedLen(len(src)))
+    n, err := hex.Decode(dst, src)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+	decode, err := Include.Decrypt([]byte(key), dst[:n])
+	if err != nil {
+		log.Printf("err dec tok")
+		log.Fatal(err)
+	}
+
+	return string(decode)
+}
+
 func GetConf(FilePath string) ConnConf{
 
 	plan, _ := ioutil.ReadFile(FilePath)
 	var retConf ConnConf
+	//var jsondata JsonConf
 	err := json.Unmarshal(plan, &retConf)
 
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	retConf.PSWD = decodeSecret(retConf.PSWD)
+	retConf.Token = decodeSecret(retConf.Token)
 
 	return retConf
 
@@ -233,12 +278,7 @@ func getNews(t string) ([]RetUrl, error) {
  
 		})
 	}
-	//rss := new(RSS)
-	//err = xml.Unmarshal(body, rss)
-	//if err != nil {
-		//return nil, err
-	//}
-	//return rss, nil
+
 	return retUrl, err
 }
 
@@ -256,9 +296,9 @@ func main() {
 
 	infoLog.Printf("start app")
 
+
 	conf := GetConf(ConfPath)
 
-	log.Printf("conf %v", conf)
 
   	// подключаемся к боту с помощью токена
   	bot, err := tgbotapi.NewBotAPI(conf.Token)
