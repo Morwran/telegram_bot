@@ -1,0 +1,16 @@
+*.log
+*.tmp
+*.txt
+*.json
+*.elf
+*.bin
+*.back
+*.[oad]
+tgbot
+#.metadata/*
+#RemoteSystemsTempFiles/*
+#Inc/Backup/
+#Src/Backup/
+~$*
+#/doc/doxygen/*
+#!/doc/doxygen/Doxyfile
